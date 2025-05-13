@@ -10,17 +10,23 @@ const Header = () =>{
   return (
     <Navbar expand="lg" className="bg-body-tertiary">
       <Container>
-        <Navbar.Brand href="#home">React-Bootstrap</Navbar.Brand>
+        <Navbar.Brand>Open University</Navbar.Brand>
         <Navbar.Toggle aria-controls="basic-navbar-nav" />
         <Navbar.Collapse id="basic-navbar-nav">
           <Nav className="me-auto">
             <Link to="/" className="nav-link">Trang chủ</Link>
+            {user!=null && user.role === "ROLE_ACADEMICSTAFF" && <Link to={"/academicStaff/theses"} className="nav-link">Quản lý khóa luận</Link>}
+          </Nav>
+          
+          <Nav>
             {user === null ? 
-            <Link to="/login" className="nav-link text-success">Đăng nhập</Link> 
-            :<>
-            <Link className="nav-link text-success">Chào {user.firstName}</Link>
-            <Button variant="danger" onClick={()=>dispatch({"type": "logout"})}>Đăng xuất</Button>
-            </>}
+              <Link to="/login" className="nav-link text-success">Đăng nhập</Link> 
+              :
+              <>
+                <Link className="nav-link text-success">Chào {user.firstName}</Link>
+                <Button variant="danger" onClick={()=>dispatch({"type": "logout"})}>Đăng xuất</Button>
+              </>
+            }
           </Nav>
         </Navbar.Collapse>
       </Container>

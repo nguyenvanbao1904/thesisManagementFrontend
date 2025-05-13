@@ -5,7 +5,8 @@ const BASE_URL = 'http://127.0.0.1:8080/thesisManagementBackend/api/'
 
 export const endpoints = {
     'login': '/login',
-    'current-user' : '/secure/profile'
+    'current-user' : '/secure/profile',
+    "theses" : "/api/theses"
 }
 
 export const authApis = () => {

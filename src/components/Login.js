@@ -33,9 +33,15 @@ const Login = () =>{
                 "type": "login",
                 "payload": u.data   
             })
-            console.log(u.data);
             
-            nav("/")
+
+            const roleToPath = {
+                "ROLE_ACADEMICSTAFF": "/academicStaff",
+                "ROLE_LECTURER": "/lecturer",
+                "ROLE_STUDENT": "/student",
+            };
+
+            nav(roleToPath[u.data.role] || "/");
         }catch(ex){
             console.error(ex)
         }finally{
