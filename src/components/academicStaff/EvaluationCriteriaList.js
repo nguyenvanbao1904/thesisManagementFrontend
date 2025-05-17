@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
 import { authApis, endpoints } from "../../configs/Apis";
 import MySpinner from "../layouts/MySpinner";
-import { Alert, Table, Button, Modal, Form, Row, Col } from "react-bootstrap";
+import { Alert, Table, Button, Row, Col } from "react-bootstrap";
+
+// Import các components chung
+import ActionButtons from "../common/ActionButtons";
+import ConfirmDeleteModal from "../common/ConfirmDeleteModal";
+import CriteriaFormFields from "../common/CriteriaFormFields";
+import FormModal from "../common/FormModal";
 
 const EvaluationCriteriaList = () => {
   const [evaluationCriterias, setEvaluationCriterias] = useState([]);
@@ -9,7 +15,7 @@ const EvaluationCriteriaList = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedCriteria, setSelectedCriteria] = useState(null);
-  const [showAddModel, setShowAddModel] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
   const [editForm, setEditForm] = useState({
     name: "",
     description: "",
@@ -71,13 +77,22 @@ const EvaluationCriteriaList = () => {
     }));
   };
 
+  const handleShowAddModal = () => {
+    setEditForm({
+      name: "",
+      description: "",
+      maxPoint: 10,
+    });
+    setShowAddModal(true);
+  };
+
   const submitEdit = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
 
     // Chuẩn bị dữ liệu để gửi lên API
     const updateData = {
       id: selectedCriteria.id,
-      name: editForm.name,
+      name: editForm.name.trim(),
       description: editForm.description,
       maxPoint: editForm.maxPoint,
     };
@@ -97,11 +112,11 @@ const EvaluationCriteriaList = () => {
   };
 
   const submitAdd = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
 
     // Chuẩn bị dữ liệu để gửi lên API
     const updateData = {
-      name: editForm.name,
+      name: editForm.name.trim(),
       description: editForm.description,
       maxPoint: editForm.maxPoint,
     };
@@ -110,7 +125,7 @@ const EvaluationCriteriaList = () => {
       await authApis().post(`${endpoints["evaluation_criterias"]}`, updateData);
       // Tải lại danh sách sau khi cập nhật
       loadEvaluationCriterias();
-      setShowAddModel(false);
+      setShowAddModal(false);
     } catch (err) {
       console.error("Error add criteria:", err);
       alert("Không thể thêm tiêu chí này!");
@@ -121,177 +136,81 @@ const EvaluationCriteriaList = () => {
     <MySpinner />
   ) : (
     <>
-      {evaluationCriterias.length > 0 ? (
-        <>
-          <h1>Danh sách tiêu chí chấm điểm khóa luận</h1>
+      <h1>Danh sách tiêu chí chấm điểm khóa luận</h1>
 
-          <Row className="mb-3 justify-content-end">
-            <Col xs="auto">
-              <Button variant="success" onClick={() => { setEditForm({maxPoint: editForm.maxPoint}); setShowAddModel(true)}}>
-                + Thêm tiêu chí
-              </Button>
-            </Col>
-          </Row>
-          <Table striped bordered hover>
-            <thead>
-              <tr>
-                <th>Tên tiêu chí</th>
-                <th>Mô tả</th>
-                <th>Điểm tối đa</th>
-                <th>Thao tác</th>
+      <Row className="mb-3 justify-content-end">
+        <Col xs="auto">
+          <Button variant="success" onClick={handleShowAddModal}>
+            + Thêm tiêu chí
+          </Button>
+        </Col>
+      </Row>
+
+      {evaluationCriterias.length > 0 ? (
+        <Table striped bordered hover>
+          <thead>
+            <tr>
+              <th>Tên tiêu chí</th>
+              <th>Mô tả</th>
+              <th>Điểm tối đa</th>
+              <th>Thao tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            {evaluationCriterias.map((evaluationCriteria) => (
+              <tr key={evaluationCriteria.id}>
+                <td>{evaluationCriteria.name}</td>
+                <td>{evaluationCriteria.description}</td>
+                <td>{evaluationCriteria.maxPoint}</td>
+                <td>
+                  <ActionButtons
+                    onEdit={() => handleEdit(evaluationCriteria)}
+                    onDelete={() => handleDelete(evaluationCriteria)}
+                  />
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {evaluationCriterias.map((evaluationCriteria) => (
-                <tr key={evaluationCriteria.id}>
-                  <td>{evaluationCriteria.name}</td>
-                  <td>{evaluationCriteria.description}</td>
-                  <td>{evaluationCriteria.maxPoint}</td>
-                  <td>
-                    <Button
-                      variant="outline-primary"
-                      size="sm"
-                      className="me-2"
-                      onClick={() => handleEdit(evaluationCriteria)}
-                    >
-                      Sửa
-                    </Button>
-                    <Button
-                      variant="outline-danger"
-                      size="sm"
-                      onClick={() => handleDelete(evaluationCriteria)}
-                    >
-                      Xóa
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        </>
+            ))}
+          </tbody>
+        </Table>
       ) : (
         <Alert>Không có tiêu chí nào!</Alert>
       )}
 
       {/* Modal xác nhận xóa */}
-      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Xác nhận xóa</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          Bạn có chắc chắn muốn xóa tiêu chí "{selectedCriteria?.name}" không?
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
-            Hủy
-          </Button>
-          <Button variant="danger" onClick={confirmDelete}>
-            Xóa
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <ConfirmDeleteModal
+        show={showDeleteModal}
+        onHide={() => setShowDeleteModal(false)}
+        onConfirm={confirmDelete}
+        itemName={selectedCriteria?.name}
+        itemType="tiêu chí"
+      />
 
       {/* Modal chỉnh sửa */}
-      <Modal show={showEditModal} onHide={() => setShowEditModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Chỉnh sửa tiêu chí</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form onSubmit={submitEdit}>
-            <Form.Group className="mb-3">
-              <Form.Label>Tên tiêu chí</Form.Label>
-              <Form.Control
-                type="text"
-                name="name"
-                value={editForm.name}
-                onChange={handleEditFormChange}
-                required
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Mô tả</Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={3}
-                name="description"
-                value={editForm.description}
-                onChange={handleEditFormChange}
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Điểm tối đa</Form.Label>
-              <Form.Control
-                type="number"
-                name="maxPoint"
-                min="1"
-                max="100"
-                value={editForm.maxPoint}
-                onChange={handleEditFormChange}
-                required
-              />
-            </Form.Group>
-          </Form>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowEditModal(false)}>
-            Hủy
-          </Button>
-          <Button variant="primary" onClick={submitEdit}>
-            Lưu thay đổi
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <FormModal
+        show={showEditModal}
+        onHide={() => setShowEditModal(false)}
+        onSubmit={submitEdit}
+        title="Chỉnh sửa tiêu chí"
+      >
+        <CriteriaFormFields
+          formData={editForm}
+          onChange={handleEditFormChange}
+        />
+      </FormModal>
 
-      {/* Modal them */}
-      <Modal show={showAddModel} onHide={() => setShowAddModel(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Thêm tiêu chí</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form onSubmit={submitEdit}>
-            <Form.Group className="mb-3">
-              <Form.Label>Tên tiêu chí</Form.Label>
-              <Form.Control
-                type="text"
-                name="name"
-                value={editForm.name}
-                onChange={handleEditFormChange}
-                required
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Mô tả</Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={3}
-                name="description"
-                value={editForm.description}
-                onChange={handleEditFormChange}
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Điểm tối đa</Form.Label>
-              <Form.Control
-                type="number"
-                name="maxPoint"
-                min="1"
-                max="100"
-                value={editForm.maxPoint}
-                onChange={handleEditFormChange}
-                required
-              />
-            </Form.Group>
-          </Form>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowAddModel(false)}>
-            Hủy
-          </Button>
-          <Button variant="primary" onClick={submitAdd}>
-            Lưu thay đổi
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      {/* Modal thêm */}
+      <FormModal
+        show={showAddModal}
+        onHide={() => setShowAddModal(false)}
+        onSubmit={submitAdd}
+        title="Thêm tiêu chí"
+        submitLabel="Thêm mới"
+      >
+        <CriteriaFormFields
+          formData={editForm}
+          onChange={handleEditFormChange}
+        />
+      </FormModal>
     </>
   );
 };

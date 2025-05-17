@@ -8,11 +8,15 @@ import {
   Badge,
   Accordion,
   Button,
-  Modal,
   Form,
   Row,
   Col,
 } from "react-bootstrap";
+
+// Import các components chung
+import ActionButtons from "../common/ActionButtons";
+import ConfirmDeleteModal from "../common/ConfirmDeleteModal";
+import FormModal from "../common/FormModal";
 
 const EvaluationCriteriaCollectionList = () => {
   const [evaluationCriteriaCollections, setEvaluationCriteriaCollections] =
@@ -221,7 +225,7 @@ const EvaluationCriteriaCollectionList = () => {
 
   //    Xử lý khi người dùng lưu thay đổi bộ tiêu chí
   const submitEdit = async (e) => {
-    e.preventDefault(); // Ngăn chặn form submit mặc định
+    if (e) e.preventDefault(); // Ngăn chặn form submit mặc định
 
     // Validate total weight is close to 1 (100%)
     const totalWeight = getTotalWeight();
@@ -236,7 +240,7 @@ const EvaluationCriteriaCollectionList = () => {
     // Chuẩn bị dữ liệu để gửi lên API theo cấu trúc DTO của backend
     const updateData = {
       id: selectedCollection.id,
-      name: editForm.name,
+      name: editForm.name.trim(),
       description: editForm.description,
       evaluationCriterias: allCriterias
         .filter((criteria) =>
@@ -266,7 +270,7 @@ const EvaluationCriteriaCollectionList = () => {
   };
 
   const submitAdd = async (e) => {
-    e.preventDefault(); // Ngăn chặn form submit mặc định
+    if (e) e.preventDefault(); // Ngăn chặn form submit mặc định
 
     // Validate total weight is close to 1 (100%)
     const totalWeight = getTotalWeight();
@@ -319,6 +323,133 @@ const EvaluationCriteriaCollectionList = () => {
     setShowAddModal(true);
   };
 
+  // Component con để hiển thị danh sách tiêu chí và trọng số
+  const CriteriaSelectionForm = () => {
+    return (
+      <>
+        <h5>Chọn tiêu chí và trọng số</h5>
+        {/* Hiển thị cảnh báo nếu tổng trọng số không hợp lệ */}
+        {!validateWeights() && (
+          <Alert variant="warning" className="mt-2">
+            Tổng các trọng số ({(getTotalWeight() * 100).toFixed(1)}%) phải
+            bằng 100%
+            {/* Nút tự động điều chỉnh trọng số */}
+            <Button
+              variant="link"
+              className="p-0 ms-2"
+              onClick={normalizeWeights}
+            >
+              Tự động điều chỉnh
+            </Button>
+          </Alert>
+        )}
+        {/* Danh sách tiêu chí để chọn */}
+        <div
+          style={{ maxHeight: "300px", overflowY: "auto" }}
+          className="border p-3 rounded mt-3"
+        >
+          {allCriterias.map((criteria) => {
+            // Kiểm tra xem tiêu chí đã được chọn chưa
+            const isSelected = editForm.selectedCriteriaIds.includes(
+              criteria.id
+            );
+            return (
+              // Thẻ hiển thị mỗi tiêu chí, thêm viền màu xanh nếu đã chọn
+              <Card
+                key={criteria.id}
+                className={`mb-2 ${isSelected ? "border-primary" : ""}`}
+              >
+                <Card.Body className="py-2">
+                  <Row className="align-items-center">
+                    <Col xs={7}>
+                      {/* Checkbox để chọn/bỏ chọn tiêu chí */}
+                      <Form.Check
+                        type="checkbox"
+                        id={`criteria-${criteria.id}`}
+                        label={
+                          <>
+                            <strong>{criteria.name}</strong>
+                            <small className="d-block text-muted">
+                              {criteria.description}
+                            </small>
+                            <small>Điểm tối đa: {criteria.maxPoint}</small>
+                          </>
+                        }
+                        checked={isSelected}
+                        onChange={() =>
+                          handleCriteriaSelection(criteria.id)
+                        }
+                      />
+                    </Col>
+                    <Col xs={5}>
+                      {/* Hiển thị trường nhập trọng số nếu tiêu chí được chọn */}
+                      {isSelected && (
+                        <Form.Group>
+                          <Form.Label className="mb-0">
+                            Trọng số (%)
+                          </Form.Label>
+                          <Form.Control
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="1"
+                            value={Math.round(
+                              (editForm.criteriaWeights[criteria.id] || 0) *
+                                100
+                            )}
+                            onChange={(e) =>
+                              handleWeightChange(
+                                criteria.id,
+                                e.target.value
+                              )
+                            }
+                            className="form-control-sm"
+                          />
+                        </Form.Group>
+                      )}
+                    </Col>
+                  </Row>
+                </Card.Body>
+              </Card>
+            );
+          })}
+        </div>
+      </>
+    );
+  };
+
+  // Component con để hiển thị form chung cho cả thêm và sửa bộ tiêu chí
+  const CollectionFormFields = () => {
+    return (
+      <>
+        <Form.Group className="mb-3">
+          <Form.Label>Tên bộ tiêu chí</Form.Label>
+          <Form.Control
+            type="text"
+            name="name"
+            value={editForm.name}
+            onChange={handleEditFormChange}
+            required
+          />
+        </Form.Group>
+        <Form.Group className="mb-3">
+          <Form.Label>Mô tả</Form.Label>
+          <Form.Control
+            as="textarea"
+            rows={3}
+            name="description"
+            value={editForm.description}
+            onChange={handleEditFormChange}
+          />
+        </Form.Group>
+
+        <hr className="my-4" />
+
+        <CriteriaSelectionForm />
+      </>
+    );
+  };
+
   return loading ? (
     // Hiển thị spinner khi đang tải dữ liệu
     <MySpinner />
@@ -353,23 +484,11 @@ const EvaluationCriteriaCollectionList = () => {
                       <Badge bg="info" className="me-3">
                         {collection.evaluationCriterias.length} tiêu chí
                       </Badge>
-                      {/* Nút Sửa */}
-                      <Button
-                        variant="outline-primary"
-                        size="sm"
-                        className="me-2"
-                        onClick={(e) => handleEdit(collection, e)}
-                      >
-                        Sửa
-                      </Button>
-                      {/* Nút Xóa */}
-                      <Button
-                        variant="outline-danger"
-                        size="sm"
-                        onClick={(e) => handleDelete(collection, e)}
-                      >
-                        Xóa
-                      </Button>
+                      {/* Nút Sửa và Xóa */}
+                      <ActionButtons
+                        onEdit={(e) => handleEdit(collection, e)}
+                        onDelete={(e) => handleDelete(collection, e)}
+                      />
                     </div>
                   </div>
                 </Accordion.Header>
@@ -419,314 +538,40 @@ const EvaluationCriteriaCollectionList = () => {
       )}
 
       {/* Modal xác nhận xóa */}
-      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Xác nhận xóa</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {/* Thông báo xác nhận xóa, hiển thị tên bộ tiêu chí */}
-          Bạn có chắc chắn muốn xóa bộ tiêu chí "{selectedCollection?.name}"
-          không?
-        </Modal.Body>
-        <Modal.Footer>
-          {/* Nút Hủy */}
-          <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
-            Hủy
-          </Button>
-          {/* Nút Xóa */}
-          <Button variant="danger" onClick={confirmDelete}>
-            Xóa
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <ConfirmDeleteModal 
+        show={showDeleteModal}
+        onHide={() => setShowDeleteModal(false)}
+        onConfirm={confirmDelete}
+        itemName={selectedCollection?.name}
+        itemType="bộ tiêu chí"
+      />
 
       {/* Modal chỉnh sửa */}
-      <Modal
+      <FormModal
         show={showEditModal}
         onHide={() => setShowEditModal(false)}
-        size="lg" // Modal kích thước lớn
-        backdrop="static" // Không đóng modal khi click ra ngoài
+        onSubmit={submitEdit}
+        title="Chỉnh sửa bộ tiêu chí"
+        size="lg"
+        staticBackdrop={true}
+        disableSubmit={!validateWeights() && editForm.selectedCriteriaIds.length > 0}
       >
-        <Modal.Header closeButton>
-          <Modal.Title>Chỉnh sửa bộ tiêu chí</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form onSubmit={submitEdit}>
-            {/* Trường nhập tên bộ tiêu chí */}
-            <Form.Group className="mb-3">
-              <Form.Label>Tên bộ tiêu chí</Form.Label>
-              <Form.Control
-                type="text"
-                name="name"
-                value={editForm.name}
-                onChange={handleEditFormChange}
-                required
-              />
-            </Form.Group>
-            {/* Trường nhập mô tả */}
-            <Form.Group className="mb-3">
-              <Form.Label>Mô tả</Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={3}
-                name="description"
-                value={editForm.description}
-                onChange={handleEditFormChange}
-              />
-            </Form.Group>
-
-            <hr className="my-4" />
-
-            <h5>Chọn tiêu chí và trọng số</h5>
-            {/* Hiển thị cảnh báo nếu tổng trọng số không hợp lệ */}
-            {!validateWeights() && (
-              <Alert variant="warning" className="mt-2">
-                Tổng các trọng số ({(getTotalWeight() * 100).toFixed(1)}%) phải
-                bằng 100%
-                {/* Nút tự động điều chỉnh trọng số */}
-                <Button
-                  variant="link"
-                  className="p-0 ms-2"
-                  onClick={normalizeWeights}
-                >
-                  Tự động điều chỉnh
-                </Button>
-              </Alert>
-            )}
-            {/* Danh sách tiêu chí để chọn */}
-            <div
-              style={{ maxHeight: "300px", overflowY: "auto" }}
-              className="border p-3 rounded mt-3"
-            >
-              {allCriterias.map((criteria) => {
-                // Kiểm tra xem tiêu chí đã được chọn chưa
-                const isSelected = editForm.selectedCriteriaIds.includes(
-                  criteria.id
-                );
-                return (
-                  // Thẻ hiển thị mỗi tiêu chí, thêm viền màu xanh nếu đã chọn
-                  <Card
-                    key={criteria.id}
-                    className={`mb-2 ${isSelected ? "border-primary" : ""}`}
-                  >
-                    <Card.Body className="py-2">
-                      <Row className="align-items-center">
-                        <Col xs={7}>
-                          {/* Checkbox để chọn/bỏ chọn tiêu chí */}
-                          <Form.Check
-                            type="checkbox"
-                            id={`criteria-${criteria.id}`}
-                            label={
-                              <>
-                                <strong>{criteria.name}</strong>
-                                <small className="d-block text-muted">
-                                  {criteria.description}
-                                </small>
-                                <small>Điểm tối đa: {criteria.maxPoint}</small>
-                              </>
-                            }
-                            checked={isSelected}
-                            onChange={() =>
-                              handleCriteriaSelection(criteria.id)
-                            }
-                          />
-                        </Col>
-                        <Col xs={5}>
-                          {/* Hiển thị trường nhập trọng số nếu tiêu chí được chọn */}
-                          {isSelected && (
-                            <Form.Group>
-                              <Form.Label className="mb-0">
-                                Trọng số (%)
-                              </Form.Label>
-                              <Form.Control
-                                type="number"
-                                min="0"
-                                max="100"
-                                step="1"
-                                value={Math.round(
-                                  (editForm.criteriaWeights[criteria.id] || 0) *
-                                    100
-                                )}
-                                onChange={(e) =>
-                                  handleWeightChange(
-                                    criteria.id,
-                                    e.target.value
-                                  )
-                                }
-                                className="form-control-sm"
-                              />
-                            </Form.Group>
-                          )}
-                        </Col>
-                      </Row>
-                    </Card.Body>
-                  </Card>
-                );
-              })}
-            </div>
-          </Form>
-        </Modal.Body>
-        <Modal.Footer>
-          {/* Nút Hủy */}
-          <Button variant="secondary" onClick={() => setShowEditModal(false)}>
-            Hủy
-          </Button>
-          {/* Nút Lưu thay đổi, vô hiệu hóa nếu tổng trọng số không hợp lệ */}
-          <Button
-            variant="primary"
-            onClick={submitEdit}
-            disabled={
-              !validateWeights() && editForm.selectedCriteriaIds.length > 0
-            }
-          >
-            Lưu thay đổi
-          </Button>
-        </Modal.Footer>
-      </Modal>
+        <CollectionFormFields />
+      </FormModal>
 
       {/* Modal thêm mới */}
-      <Modal
+      <FormModal
         show={showAddModal}
         onHide={() => setShowAddModal(false)}
-        size="lg" // Modal kích thước lớn
-        backdrop="static" // Không đóng modal khi click ra ngoài
+        onSubmit={submitAdd}
+        title="Thêm bộ tiêu chí"
+        submitLabel="Thêm mới"
+        size="lg"
+        staticBackdrop={true}
+        disableSubmit={!validateWeights() && editForm.selectedCriteriaIds.length > 0}
       >
-        <Modal.Header closeButton>
-          <Modal.Title>Thêm bộ tiêu chí</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form onSubmit={submitAdd}>
-            {/* Trường nhập tên bộ tiêu chí */}
-            <Form.Group className="mb-3">
-              <Form.Label>Tên bộ tiêu chí</Form.Label>
-              <Form.Control
-                type="text"
-                name="name"
-                value={editForm.name}
-                onChange={handleEditFormChange}
-                required
-              />
-            </Form.Group>
-            {/* Trường nhập mô tả */}
-            <Form.Group className="mb-3">
-              <Form.Label>Mô tả</Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={3}
-                name="description"
-                value={editForm.description}
-                onChange={handleEditFormChange}
-              />
-            </Form.Group>
-
-            <hr className="my-4" />
-
-            <h5>Chọn tiêu chí và trọng số</h5>
-            {/* Hiển thị cảnh báo nếu tổng trọng số không hợp lệ */}
-            {!validateWeights() && (
-              <Alert variant="warning" className="mt-2">
-                Tổng các trọng số ({(getTotalWeight() * 100).toFixed(1)}%) phải
-                bằng 100%
-                {/* Nút tự động điều chỉnh trọng số */}
-                <Button
-                  variant="link"
-                  className="p-0 ms-2"
-                  onClick={normalizeWeights}
-                >
-                  Tự động điều chỉnh
-                </Button>
-              </Alert>
-            )}
-            {/* Danh sách tiêu chí để chọn */}
-            <div
-              style={{ maxHeight: "300px", overflowY: "auto" }}
-              className="border p-3 rounded mt-3"
-            >
-              {allCriterias.map((criteria) => {
-                // Kiểm tra xem tiêu chí đã được chọn chưa
-                const isSelected = editForm.selectedCriteriaIds.includes(
-                  criteria.id
-                );
-                return (
-                  // Thẻ hiển thị mỗi tiêu chí, thêm viền màu xanh nếu đã chọn
-                  <Card
-                    key={criteria.id}
-                    className={`mb-2 ${isSelected ? "border-primary" : ""}`}
-                  >
-                    <Card.Body className="py-2">
-                      <Row className="align-items-center">
-                        <Col xs={7}>
-                          {/* Checkbox để chọn/bỏ chọn tiêu chí */}
-                          <Form.Check
-                            type="checkbox"
-                            id={`add-criteria-${criteria.id}`}
-                            label={
-                              <>
-                                <strong>{criteria.name}</strong>
-                                <small className="d-block text-muted">
-                                  {criteria.description}
-                                </small>
-                                <small>Điểm tối đa: {criteria.maxPoint}</small>
-                              </>
-                            }
-                            checked={isSelected}
-                            onChange={() =>
-                              handleCriteriaSelection(criteria.id)
-                            }
-                          />
-                        </Col>
-                        <Col xs={5}>
-                          {/* Hiển thị trường nhập trọng số nếu tiêu chí được chọn */}
-                          {isSelected && (
-                            <Form.Group>
-                              <Form.Label className="mb-0">
-                                Trọng số (%)
-                              </Form.Label>
-                              <Form.Control
-                                type="number"
-                                min="0"
-                                max="100"
-                                step="1"
-                                value={Math.round(
-                                  (editForm.criteriaWeights[criteria.id] || 0) *
-                                    100
-                                )}
-                                onChange={(e) =>
-                                  handleWeightChange(
-                                    criteria.id,
-                                    e.target.value
-                                  )
-                                }
-                                className="form-control-sm"
-                              />
-                            </Form.Group>
-                          )}
-                        </Col>
-                      </Row>
-                    </Card.Body>
-                  </Card>
-                );
-              })}
-            </div>
-          </Form>
-        </Modal.Body>
-        <Modal.Footer>
-          {/* Nút Hủy */}
-          <Button variant="secondary" onClick={() => setShowAddModal(false)}>
-            Hủy
-          </Button>
-          {/* Nút Lưu thay đổi, vô hiệu hóa nếu tổng trọng số không hợp lệ */}
-          <Button
-            variant="primary"
-            onClick={submitAdd}
-            disabled={
-              !validateWeights() && editForm.selectedCriteriaIds.length > 0
-            }
-          >
-            Thêm mới
-          </Button>
-        </Modal.Footer>
-      </Modal>
+        <CollectionFormFields />
+      </FormModal>
     </>
   );
 };
