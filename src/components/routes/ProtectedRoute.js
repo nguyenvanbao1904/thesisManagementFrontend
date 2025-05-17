@@ -1,10 +1,10 @@
-import { useContext } from "react"
+import { use, useContext } from "react"
 import { MyUserContext } from "../../configs/Context"
 import { Navigate } from "react-router-dom";
 
 const ProtectedRoute = ({children, allowedRoles}) =>{
     const user = useContext(MyUserContext);
-
+    console.log(use)
     if (user === null){
        return <Navigate to="/login" replace />;
     }

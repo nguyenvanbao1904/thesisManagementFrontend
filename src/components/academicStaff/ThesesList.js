@@ -33,7 +33,7 @@ const ThesesList = ()=>{
                 <th>Tiêu đề</th>
                 <th>Mô tả</th>
                 <th>Trạng thái</th>
-                <th>Giảng viên hướng dẫn</th>
+                <th>Giảng viên Phản biện</th>
                 <th>Bộ tiêu chí chấm điểm</th>
                 <th>Hội đồng chấm điểm</th>
                 <th>Ngày bảo vệ</th>

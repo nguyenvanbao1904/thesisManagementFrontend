@@ -15,7 +15,7 @@ const Header = () =>{
         <Navbar.Collapse id="basic-navbar-nav">
           <Nav className="me-auto">
             <Link to="/" className="nav-link">Trang chủ</Link>
-            {user!=null && user.role === "ROLE_ACADEMICSTAFF" && <Link to={"/academicStaff/theses"} className="nav-link">Quản lý khóa luận</Link>}
+            {user!=null && user.role === "ROLE_ACADEMICSTAFF" && <Link to={"/academicStaff/theses"} className="nav-link">Quản lý thông tin khóa luận</Link>}
           </Nav>
           
           <Nav>

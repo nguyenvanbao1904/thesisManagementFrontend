@@ -24,11 +24,12 @@ const App = () => {
       const token = cookie.load("token");
       if (token !== null) {
         try {
-          const res = await authApis().get(endpoints["current-user"]);
+          const res = await authApis().get(endpoints["current_user"]);
           dispatch({
             type: "login",
             payload: res.data,
           });
+          
         } catch (err) {
           console.error("Lỗi lấy user ", err);
         }

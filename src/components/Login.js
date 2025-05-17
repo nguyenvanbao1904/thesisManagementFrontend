@@ -28,7 +28,7 @@ const Login = () =>{
             setLoading(true);
             let res = await Apis.post(endpoints["login"], {...user});
             cookie.save("token", res.data.token)
-            let u = await authApis().get(endpoints['current-user']);
+            let u = await authApis().get(endpoints['current_user']);
             dispatch({
                 "type": "login",
                 "payload": u.data   

@@ -5,6 +5,8 @@ const MyUserReducer = (current, action) => {
         case "login":
             return action.payload;
         case "logout":
+            console.log(1);
+            
             cookie.remove("token")
             return null;
         default:
