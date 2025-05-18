@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { authApis, endpoints } from "../../configs/Apis";
 import MySpinner from "../layouts/MySpinner";
 import {
@@ -17,6 +17,7 @@ import {
 import ActionButtons from "../common/ActionButtons";
 import ConfirmDeleteModal from "../common/ConfirmDeleteModal";
 import FormModal from "../common/FormModal";
+import LoadMoreButton from "../common/LoadMoreButton";
 
 const EvaluationCriteriaCollectionList = () => {
   const [evaluationCriteriaCollections, setEvaluationCriteriaCollections] =
@@ -33,34 +34,55 @@ const EvaluationCriteriaCollectionList = () => {
     selectedCriteriaIds: [],
     criteriaWeights: {},
   });
+  const [page, setPage] = useState(1);
+  const [allCriteriasPage, setAllCriteriasPage] = useState(1);
 
-  useEffect(() => {
-    loadEvaluationCriteriaCollections();
-    fetchAllCriterias();
-  }, []);
-
-  const loadEvaluationCriteriaCollections = async () => {
+  const loadEvaluationCriteriaCollections = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await authApis().get(
-        endpoints["evaluation_criteria_collections"]
-      );
-      setEvaluationCriteriaCollections(res.data);
+      let url = `${endpoints["evaluation_criteria_collections"]}?page=${page}`;
+      const res = await authApis().get(url);
+      if (res.data.length === 0) {
+        setPage(0);
+      } else {
+        if (page === 1) {
+          setEvaluationCriteriaCollections(res.data);
+        } else {
+          setEvaluationCriteriaCollections((pre) => [...pre, ...res.data]);
+        }
+      }
     } catch (err) {
       console.error("Error fetching evaluation criteria collections:", err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [page]);
 
-  const fetchAllCriterias = async () => {
+  useEffect(() => {
+    loadEvaluationCriteriaCollections();
+  }, [loadEvaluationCriteriaCollections]);
+
+  const fetchAllCriterias = useCallback(async () => {
     try {
-      const res = await authApis().get(endpoints["evaluation_criterias"]);
-      setAllCriterias(res.data);
+      let url = `${endpoints["evaluation_criterias"]}?page=${allCriteriasPage}`;
+      const res = await authApis().get(url);
+      if (res.data.length === 0) {
+        setAllCriteriasPage(0);
+      } else {
+        if (allCriteriasPage === 1) {
+          setAllCriterias(res.data);
+        } else {
+          setAllCriterias((pre) => [...pre, ...res.data]);
+        }
+      }
     } catch (err) {
       console.error("Error fetching evaluation criterias:", err);
     }
-  };
+  }, [allCriteriasPage]);
+
+  useEffect(() => {
+    fetchAllCriterias();
+  }, [fetchAllCriterias]);
 
   const handleEdit = (collection, e) => {
     e.stopPropagation();
@@ -252,7 +274,7 @@ const EvaluationCriteriaCollectionList = () => {
         })),
       selectedCriteriaIds: editForm.selectedCriteriaIds,
     };
-    
+
     try {
       // Gọi API cập nhật bộ tiêu chí
       console.log(updateData);
@@ -261,6 +283,7 @@ const EvaluationCriteriaCollectionList = () => {
         updateData
       );
       // Tải lại danh sách sau khi cập nhật
+      setPage(1);
       loadEvaluationCriteriaCollections();
       setShowEditModal(false); // Đóng modal chỉnh sửa
     } catch (err) {
@@ -305,6 +328,7 @@ const EvaluationCriteriaCollectionList = () => {
         updateData
       );
       // Tải lại danh sách sau khi thêm
+      setPage(1);
       loadEvaluationCriteriaCollections();
       setShowAddModal(false); // Đóng modal thêm
     } catch (err) {
@@ -323,6 +347,18 @@ const EvaluationCriteriaCollectionList = () => {
     setShowAddModal(true);
   };
 
+  const loadMore = () => {
+    if (!loading && page > 0) {
+      setPage(page + 1);
+    }
+  };
+
+  const loadMoreCriterias = () => {
+    if (!loading && allCriteriasPage > 0) {
+      setAllCriteriasPage(allCriteriasPage + 1);
+    }
+  };
+
   // Component con để hiển thị danh sách tiêu chí và trọng số
   const CriteriaSelectionForm = () => {
     return (
@@ -331,8 +367,8 @@ const EvaluationCriteriaCollectionList = () => {
         {/* Hiển thị cảnh báo nếu tổng trọng số không hợp lệ */}
         {!validateWeights() && (
           <Alert variant="warning" className="mt-2">
-            Tổng các trọng số ({(getTotalWeight() * 100).toFixed(1)}%) phải
-            bằng 100%
+            Tổng các trọng số ({(getTotalWeight() * 100).toFixed(1)}%) phải bằng
+            100%
             {/* Nút tự động điều chỉnh trọng số */}
             <Button
               variant="link"
@@ -376,32 +412,24 @@ const EvaluationCriteriaCollectionList = () => {
                           </>
                         }
                         checked={isSelected}
-                        onChange={() =>
-                          handleCriteriaSelection(criteria.id)
-                        }
+                        onChange={() => handleCriteriaSelection(criteria.id)}
                       />
                     </Col>
                     <Col xs={5}>
                       {/* Hiển thị trường nhập trọng số nếu tiêu chí được chọn */}
                       {isSelected && (
                         <Form.Group>
-                          <Form.Label className="mb-0">
-                            Trọng số (%)
-                          </Form.Label>
+                          <Form.Label className="mb-0">Trọng số (%)</Form.Label>
                           <Form.Control
                             type="number"
                             min="0"
                             max="100"
                             step="1"
                             value={Math.round(
-                              (editForm.criteriaWeights[criteria.id] || 0) *
-                                100
+                              (editForm.criteriaWeights[criteria.id] || 0) * 100
                             )}
                             onChange={(e) =>
-                              handleWeightChange(
-                                criteria.id,
-                                e.target.value
-                              )
+                              handleWeightChange(criteria.id, e.target.value)
                             }
                             className="form-control-sm"
                           />
@@ -413,6 +441,9 @@ const EvaluationCriteriaCollectionList = () => {
               </Card>
             );
           })}
+          {allCriteriasPage > 0 && (
+            <LoadMoreButton loadMore={loadMoreCriterias} />
+          )}
         </div>
       </>
     );
@@ -456,7 +487,7 @@ const EvaluationCriteriaCollectionList = () => {
   ) : (
     <>
       <h1 className="mb-4">Danh sách bộ tiêu chí chấm điểm</h1>
-      
+
       <Row className="mb-3 justify-content-end">
         <Col xs="auto">
           <Button variant="success" onClick={handleShowAddModal}>
@@ -464,7 +495,7 @@ const EvaluationCriteriaCollectionList = () => {
           </Button>
         </Col>
       </Row>
-      
+
       {evaluationCriteriaCollections.length > 0 ? (
         // Hiển thị danh sách bộ tiêu chí nếu có dữ liệu
         <>
@@ -488,6 +519,7 @@ const EvaluationCriteriaCollectionList = () => {
                       <ActionButtons
                         onEdit={(e) => handleEdit(collection, e)}
                         onDelete={(e) => handleDelete(collection, e)}
+                        insideAccordion={true}
                       />
                     </div>
                   </div>
@@ -531,6 +563,7 @@ const EvaluationCriteriaCollectionList = () => {
               </Accordion.Item>
             ))}
           </Accordion>
+          {page > 0 && <LoadMoreButton loadMore={loadMore} />}
         </>
       ) : (
         // Hiển thị thông báo nếu không có dữ liệu
@@ -538,7 +571,7 @@ const EvaluationCriteriaCollectionList = () => {
       )}
 
       {/* Modal xác nhận xóa */}
-      <ConfirmDeleteModal 
+      <ConfirmDeleteModal
         show={showDeleteModal}
         onHide={() => setShowDeleteModal(false)}
         onConfirm={confirmDelete}
@@ -554,7 +587,9 @@ const EvaluationCriteriaCollectionList = () => {
         title="Chỉnh sửa bộ tiêu chí"
         size="lg"
         staticBackdrop={true}
-        disableSubmit={!validateWeights() && editForm.selectedCriteriaIds.length > 0}
+        disableSubmit={
+          !validateWeights() && editForm.selectedCriteriaIds.length > 0
+        }
       >
         <CollectionFormFields />
       </FormModal>
@@ -568,7 +603,9 @@ const EvaluationCriteriaCollectionList = () => {
         submitLabel="Thêm mới"
         size="lg"
         staticBackdrop={true}
-        disableSubmit={!validateWeights() && editForm.selectedCriteriaIds.length > 0}
+        disableSubmit={
+          !validateWeights() && editForm.selectedCriteriaIds.length > 0
+        }
       >
         <CollectionFormFields />
       </FormModal>

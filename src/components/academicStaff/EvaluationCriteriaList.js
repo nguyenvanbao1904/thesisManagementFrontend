@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { authApis, endpoints } from "../../configs/Apis";
 import MySpinner from "../layouts/MySpinner";
 import { Alert, Table, Button, Row, Col } from "react-bootstrap";
@@ -8,6 +8,7 @@ import ActionButtons from "../common/ActionButtons";
 import ConfirmDeleteModal from "../common/ConfirmDeleteModal";
 import CriteriaFormFields from "../common/CriteriaFormFields";
 import FormModal from "../common/FormModal";
+import LoadMoreButton from "../common/LoadMoreButton";
 
 const EvaluationCriteriaList = () => {
   const [evaluationCriterias, setEvaluationCriterias] = useState([]);
@@ -21,22 +22,33 @@ const EvaluationCriteriaList = () => {
     description: "",
     maxPoint: 10,
   });
+  const [page, setPage] = useState(1);
 
-  useEffect(() => {
-    loadEvaluationCriterias();
-  }, []);
-
-  const loadEvaluationCriterias = async () => {
+  const loadEvaluationCriterias = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await authApis().get(endpoints["evaluation_criterias"]);
-      setEvaluationCriterias(res.data);
+      let url = `${endpoints["evaluation_criterias"]}?page=${page}`;
+      const res = await authApis().get(url);
+
+      if (res.data.length === 0) {
+        setPage(0);
+      } else {
+        if (page === 1) {
+          setEvaluationCriterias(res.data);
+        } else {
+          setEvaluationCriterias(prevCriterias => [...prevCriterias, ...res.data]);
+        }
+      }
     } catch (err) {
       console.error("Error fetching evaluation criterias:", err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [page]);
+
+  useEffect(() => {
+    loadEvaluationCriterias();
+  }, [loadEvaluationCriterias]);
 
   const handleEdit = (criteria) => {
     setSelectedCriteria(criteria);
@@ -103,6 +115,7 @@ const EvaluationCriteriaList = () => {
         updateData
       );
       // Tải lại danh sách sau khi cập nhật
+      setPage(1);
       loadEvaluationCriterias();
       setShowEditModal(false);
     } catch (err) {
@@ -124,6 +137,7 @@ const EvaluationCriteriaList = () => {
     try {
       await authApis().post(`${endpoints["evaluation_criterias"]}`, updateData);
       // Tải lại danh sách sau khi cập nhật
+      setPage(1);
       loadEvaluationCriterias();
       setShowAddModal(false);
     } catch (err) {
@@ -131,6 +145,12 @@ const EvaluationCriteriaList = () => {
       alert("Không thể thêm tiêu chí này!");
     }
   };
+
+   const loadMore = ()=>{
+        if (!loading && page > 0){
+            setPage(page+1)
+        }
+    }
 
   return loading ? (
     <MySpinner />
@@ -147,31 +167,36 @@ const EvaluationCriteriaList = () => {
       </Row>
 
       {evaluationCriterias.length > 0 ? (
-        <Table striped bordered hover>
-          <thead>
-            <tr>
-              <th>Tên tiêu chí</th>
-              <th>Mô tả</th>
-              <th>Điểm tối đa</th>
-              <th>Thao tác</th>
-            </tr>
-          </thead>
-          <tbody>
-            {evaluationCriterias.map((evaluationCriteria) => (
-              <tr key={evaluationCriteria.id}>
-                <td>{evaluationCriteria.name}</td>
-                <td>{evaluationCriteria.description}</td>
-                <td>{evaluationCriteria.maxPoint}</td>
-                <td>
-                  <ActionButtons
-                    onEdit={() => handleEdit(evaluationCriteria)}
-                    onDelete={() => handleDelete(evaluationCriteria)}
-                  />
-                </td>
+        <>
+          <Table striped bordered hover>
+            <thead>
+              <tr>
+                <th>Tên tiêu chí</th>
+                <th>Mô tả</th>
+                <th>Điểm tối đa</th>
+                <th>Thao tác</th>
               </tr>
-            ))}
-          </tbody>
-        </Table>
+            </thead>
+            <tbody>
+              {evaluationCriterias.map((evaluationCriteria) => (
+                <tr key={evaluationCriteria.id}>
+                  <td>{evaluationCriteria.name}</td>
+                  <td>{evaluationCriteria.description}</td>
+                  <td>{evaluationCriteria.maxPoint}</td>
+                  <td>
+                    <ActionButtons
+                      onEdit={() => handleEdit(evaluationCriteria)}
+                      onDelete={() => handleDelete(evaluationCriteria)}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+          {page > 0 && (
+           <LoadMoreButton loadMore={loadMore}/>
+          )}
+        </>
       ) : (
         <Alert>Không có tiêu chí nào!</Alert>
       )}
