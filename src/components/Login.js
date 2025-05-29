@@ -36,7 +36,7 @@ const Login = () =>{
             
 
             const roleToPath = {
-                "ROLE_ACADEMICSTAFF": "/academicStaff",
+                "ROLE_ACADEMICSTAFF": "/academicStaff/theses",
                 "ROLE_LECTURER": "/lecturer",
                 "ROLE_STUDENT": "/student",
             };

@@ -1,33 +1,30 @@
 import { useState } from "react";
-import {
-  Container,
-  Row,
-  Button,
-  ButtonGroup,
-  Card,
-} from "react-bootstrap";
+import { Container, Row, Button, ButtonGroup, Card } from "react-bootstrap";
 import ThesesList from "./ThesesList";
 import EvaluationCriteriaList from "./EvaluationCriteriaList";
 import EvaluationCriteriaCollectionList from "./EvaluationCriteriaCollectionList";
+import CommitteeList from "./CommitteeList";
 
 const tabs = [
   {
     key: "theses",
     label: "Quản lý khóa luận",
-    addText: "khóa luận",
     content: <ThesesList />,
   },
   {
     key: "criteria",
     label: "Quản lý tiêu chí chấm điểm",
-    addText: "tiêu chí",
-    content: <EvaluationCriteriaList />
+    content: <EvaluationCriteriaList />,
   },
   {
     key: "criteriaCollection",
     label: "Quản lý bộ tiêu chí",
-    addText: "bộ tiêu chí",
-    content: <EvaluationCriteriaCollectionList />
+    content: <EvaluationCriteriaCollectionList />,
+  },
+  {
+    key: "committee",
+    label: "Quản lý hội đồng",
+    content: <CommitteeList />,
   },
 ];
 

@@ -4,12 +4,9 @@ import { Navigate } from "react-router-dom";
 
 const ProtectedRoute = ({children, allowedRoles}) =>{
     const user = useContext(MyUserContext);
-    console.log(use)
     if (user === null){
        return <Navigate to="/login" replace />;
     }
-
-    console.log(!allowedRoles.includes(user.role))
 
     if(!allowedRoles.includes(user.role)){
         return <Navigate to="/unauthorized" replace />;

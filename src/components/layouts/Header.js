@@ -6,7 +6,6 @@ import { MyDispatchContext, MyUserContext } from "../../configs/Context";
 const Header = () =>{
   const user = useContext(MyUserContext);
   const dispatch = useContext(MyDispatchContext)
-
   return (
     <Navbar expand="lg" className="bg-body-tertiary">
       <Container>

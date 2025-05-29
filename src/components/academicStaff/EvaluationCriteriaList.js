@@ -1,160 +1,186 @@
-import { useEffect, useState, useCallback } from "react";
-import { authApis, endpoints } from "../../configs/Apis";
-import MySpinner from "../layouts/MySpinner";
+import React, { useEffect, useState, useCallback } from "react";
 import { Alert, Table, Button, Row, Col } from "react-bootstrap";
-
-// Import các components chung
+import MySpinner from "../layouts/MySpinner";
 import ActionButtons from "../common/ActionButtons";
-import ConfirmDeleteModal from "../common/ConfirmDeleteModal";
-import CriteriaFormFields from "../common/CriteriaFormFields";
-import FormModal from "../common/FormModal";
 import LoadMoreButton from "../common/LoadMoreButton";
+import ConfirmDeleteModal from "../common/ConfirmDeleteModal";
+import FormModal from "../common/FormModal";
+import CriteriaFormFields from "../common/CriteriaFormFields";
+import { useEvaluationCriteriaData } from "../../hooks/useEvaluationCriteriaData";
+import { useEvaluationCriteriaForm } from "../../hooks/useEvaluationCriteriaForm";
+import { authApis, endpoints } from "../../configs/Apis";
 
 const EvaluationCriteriaList = () => {
-  const [evaluationCriterias, setEvaluationCriterias] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedCriteria, setSelectedCriteria] = useState(null);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [editForm, setEditForm] = useState({
-    name: "",
-    description: "",
-    maxPoint: 10,
+  const {
+    data,
+    pagination,
+    loading,
+    error,
+    loadEvaluationCriterias,
+    setPagination,
+    setLoading,
+  } = useEvaluationCriteriaData();
+
+  const {
+    formData,
+    resetForm,
+    handleInputChange,
+    setFormData,
+  } = useEvaluationCriteriaForm();
+
+  const [modals, setModals] = useState({
+    showDelete: false,
+    showEdit: false,
+    showAdd: false,
   });
-  const [page, setPage] = useState(1);
 
-  const loadEvaluationCriterias = useCallback(async () => {
-    setLoading(true);
-    try {
-      let url = `${endpoints["evaluation_criterias"]}?page=${page}`;
-      const res = await authApis().get(url);
+  const [selectedCriteria, setSelectedCriteria] = useState(null);
 
-      if (res.data.length === 0) {
-        setPage(0);
-      } else {
-        if (page === 1) {
-          setEvaluationCriterias(res.data);
-        } else {
-          setEvaluationCriterias(prevCriterias => [...prevCriterias, ...res.data]);
-        }
-      }
-    } catch (err) {
-      console.error("Error fetching evaluation criterias:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [page]);
-
+  // Load dữ liệu ban đầu
   useEffect(() => {
-    loadEvaluationCriterias();
-  }, [loadEvaluationCriterias]);
+    loadEvaluationCriterias(pagination.evaluationCriteriasPage);
+  }, [pagination.evaluationCriteriasPage, loadEvaluationCriterias]);
 
-  const handleEdit = (criteria) => {
-    setSelectedCriteria(criteria);
-    setEditForm({
-      name: criteria.name,
-      description: criteria.description,
-      maxPoint: criteria.maxPoint,
-    });
-    setShowEditModal(true);
-  };
+  const updateModal = useCallback((modalType, isOpen) => {
+    setModals((prev) => ({ ...prev, [modalType]: isOpen }));
+  }, []);
 
-  const handleDelete = (criteria) => {
-    setSelectedCriteria(criteria);
-    setShowDeleteModal(true);
-  };
+  const loadMore = useCallback(() => {
+    if (!loading && pagination.evaluationCriteriasPage > 0) {
+      setPagination((prev) => ({ 
+        ...prev, 
+        evaluationCriteriasPage: prev.evaluationCriteriasPage + 1 
+      }));
+    }
+  }, [loading, pagination.evaluationCriteriasPage, setPagination]);
 
-  const confirmDelete = async () => {
+  const handleEdit = useCallback(
+    (e, criteria) => {
+      e.stopPropagation();
+      setSelectedCriteria(criteria);
+      setFormData({
+        name: criteria.name,
+        description: criteria.description,
+        maxPoint: criteria.maxPoint,
+      });
+      updateModal("showEdit", true);
+    },
+    [setFormData, updateModal]
+  );
+
+  const handleDelete = useCallback(
+    (e, criteria) => {
+      e.stopPropagation();
+      setSelectedCriteria(criteria);
+      updateModal("showDelete", true);
+    },
+    [updateModal]
+  );
+
+  const confirmDelete = useCallback(async () => {
+    if (!selectedCriteria) return;
+
     try {
       await authApis().delete(
         `${endpoints["evaluation_criterias"]}/${selectedCriteria.id}`
       );
-      // Cập nhật danh sách sau khi xóa
-      setEvaluationCriterias(
-        evaluationCriterias.filter((c) => c.id !== selectedCriteria.id)
-      );
-      setShowDeleteModal(false);
+
+      // Reset về trang 1 và load lại data
+      setPagination((prev) => ({ ...prev, evaluationCriteriasPage: 1 }));
+      await loadEvaluationCriterias(1);
+      updateModal("showDelete", false);
+      alert("Xóa tiêu chí thành công!");
     } catch (err) {
       console.error("Error deleting criteria:", err);
       alert("Không thể xóa tiêu chí này!");
     }
-  };
+  }, [selectedCriteria, setPagination, loadEvaluationCriterias, updateModal]);
 
-  const handleEditFormChange = (e) => {
-    const { name, value } = e.target;
-    setEditForm((prev) => ({
-      ...prev,
-      [name]: name === "maxPoint" ? parseInt(value, 10) : value,
-    }));
-  };
+  const submitEdit = useCallback(
+    async (e) => {
+      if (e) e.preventDefault();
+      if (!selectedCriteria) return;
 
-  const handleShowAddModal = () => {
-    setEditForm({
-      name: "",
-      description: "",
-      maxPoint: 10,
-    });
-    setShowAddModal(true);
-  };
+      setLoading(true);
 
-  const submitEdit = async (e) => {
-    if (e) e.preventDefault();
+      try {
+        const updateData = {
+          id: selectedCriteria.id,
+          name: formData.name.trim(),
+          description: formData.description,
+          maxPoint: formData.maxPoint,
+        };
 
-    // Chuẩn bị dữ liệu để gửi lên API
-    const updateData = {
-      id: selectedCriteria.id,
-      name: editForm.name.trim(),
-      description: editForm.description,
-      maxPoint: editForm.maxPoint,
-    };
+        await authApis().put(
+          `${endpoints["evaluation_criterias"]}/${selectedCriteria.id}`,
+          updateData
+        );
 
-    try {
-      await authApis().put(
-        `${endpoints["evaluation_criterias"]}/${selectedCriteria.id}`,
-        updateData
-      );
-      // Tải lại danh sách sau khi cập nhật
-      setPage(1);
-      loadEvaluationCriterias();
-      setShowEditModal(false);
-    } catch (err) {
-      console.error("Error updating criteria:", err);
-      alert("Không thể cập nhật tiêu chí này!");
-    }
-  };
+        // Reset về trang 1 và load lại data
+        setPagination((prev) => ({ ...prev, evaluationCriteriasPage: 1 }));
+        await loadEvaluationCriterias(1);
+        updateModal("showEdit", false);
+        alert("Cập nhật tiêu chí thành công!");
+      } catch (err) {
+        console.error("Error updating criteria:", err);
+        alert("Không thể cập nhật tiêu chí này!");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [
+      selectedCriteria,
+      formData,
+      setLoading,
+      setPagination,
+      loadEvaluationCriterias,
+      updateModal,
+    ]
+  );
 
-  const submitAdd = async (e) => {
-    if (e) e.preventDefault();
+  const submitAdd = useCallback(
+    async (e) => {
+      if (e) e.preventDefault();
+      setLoading(true);
 
-    // Chuẩn bị dữ liệu để gửi lên API
-    const updateData = {
-      name: editForm.name.trim(),
-      description: editForm.description,
-      maxPoint: editForm.maxPoint,
-    };
+      try {
+        const updateData = {
+          name: formData.name.trim(),
+          description: formData.description,
+          maxPoint: formData.maxPoint,
+        };
 
-    try {
-      await authApis().post(`${endpoints["evaluation_criterias"]}`, updateData);
-      // Tải lại danh sách sau khi cập nhật
-      setPage(1);
-      loadEvaluationCriterias();
-      setShowAddModal(false);
-    } catch (err) {
-      console.error("Error add criteria:", err);
-      alert("Không thể thêm tiêu chí này!");
-    }
-  };
+        await authApis().post(`${endpoints["evaluation_criterias"]}`, updateData);
 
-   const loadMore = ()=>{
-        if (!loading && page > 0){
-            setPage(page+1)
-        }
-    }
+        // Reset về trang 1 và load lại data
+        setPagination((prev) => ({ ...prev, evaluationCriteriasPage: 1 }));
+        await loadEvaluationCriterias(1);
+        updateModal("showAdd", false);
+        alert("Thêm tiêu chí thành công!");
+      } catch (err) {
+        console.error("Error adding criteria:", err);
+        alert("Không thể thêm tiêu chí này!");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [formData, setLoading, setPagination, loadEvaluationCriterias, updateModal]
+  );
 
-  return loading ? (
-    <MySpinner />
-  ) : (
+  const handleShowAddModal = useCallback(() => {
+    resetForm();
+    updateModal("showAdd", true);
+  }, [resetForm, updateModal]);
+
+  if (loading && data.evaluationCriterias.length === 0) {
+    return <MySpinner />;
+  }
+
+  if (error) {
+    return <Alert variant="danger">{error}</Alert>;
+  }
+
+  return (
     <>
       <h1>Danh sách tiêu chí chấm điểm khóa luận</h1>
 
@@ -166,7 +192,7 @@ const EvaluationCriteriaList = () => {
         </Col>
       </Row>
 
-      {evaluationCriterias.length > 0 ? (
+      {data.evaluationCriterias.length > 0 ? (
         <>
           <Table striped bordered hover>
             <thead>
@@ -178,23 +204,23 @@ const EvaluationCriteriaList = () => {
               </tr>
             </thead>
             <tbody>
-              {evaluationCriterias.map((evaluationCriteria) => (
+              {data.evaluationCriterias.map((evaluationCriteria) => (
                 <tr key={evaluationCriteria.id}>
                   <td>{evaluationCriteria.name}</td>
                   <td>{evaluationCriteria.description}</td>
                   <td>{evaluationCriteria.maxPoint}</td>
                   <td>
                     <ActionButtons
-                      onEdit={() => handleEdit(evaluationCriteria)}
-                      onDelete={() => handleDelete(evaluationCriteria)}
+                      onEdit={(e) => handleEdit(e, evaluationCriteria)}
+                      onDelete={(e) => handleDelete(e, evaluationCriteria)}
                     />
                   </td>
                 </tr>
               ))}
             </tbody>
           </Table>
-          {page > 0 && (
-           <LoadMoreButton loadMore={loadMore}/>
+          {pagination.evaluationCriteriasPage > 0 && (
+            <LoadMoreButton loadMore={loadMore} />
           )}
         </>
       ) : (
@@ -203,8 +229,8 @@ const EvaluationCriteriaList = () => {
 
       {/* Modal xác nhận xóa */}
       <ConfirmDeleteModal
-        show={showDeleteModal}
-        onHide={() => setShowDeleteModal(false)}
+        show={modals.showDelete}
+        onHide={() => updateModal("showDelete", false)}
         onConfirm={confirmDelete}
         itemName={selectedCriteria?.name}
         itemType="tiêu chí"
@@ -212,28 +238,28 @@ const EvaluationCriteriaList = () => {
 
       {/* Modal chỉnh sửa */}
       <FormModal
-        show={showEditModal}
-        onHide={() => setShowEditModal(false)}
+        show={modals.showEdit}
+        onHide={() => updateModal("showEdit", false)}
         onSubmit={submitEdit}
         title="Chỉnh sửa tiêu chí"
       >
         <CriteriaFormFields
-          formData={editForm}
-          onChange={handleEditFormChange}
+          formData={formData}
+          onChange={handleInputChange}
         />
       </FormModal>
 
-      {/* Modal thêm */}
+      {/* Modal thêm mới */}
       <FormModal
-        show={showAddModal}
-        onHide={() => setShowAddModal(false)}
+        show={modals.showAdd}
+        onHide={() => updateModal("showAdd", false)}
         onSubmit={submitAdd}
         title="Thêm tiêu chí"
         submitLabel="Thêm mới"
       >
         <CriteriaFormFields
-          formData={editForm}
-          onChange={handleEditFormChange}
+          formData={formData}
+          onChange={handleInputChange}
         />
       </FormModal>
     </>
