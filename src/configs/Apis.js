@@ -11,6 +11,7 @@ export const endpoints = {
   evaluation_criteria_collections: "evaluation_criteria_collections",
   users: "users",
   committees: "committees",
+  committeesLocations : "committees/locations",
 };
 
 export const authApis = () => {

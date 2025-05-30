@@ -21,6 +21,7 @@ const ThesesList = () => {
     loadStudents,
     loadCommittees,
     loadEvaluationCriteriaCollections,
+    loadThesisById,
     setPagination,
     setLoading,
   } = useThesisData();
@@ -82,24 +83,6 @@ const ThesesList = () => {
     }
   }, [loading, pagination.thesesPage, setPagination]);
 
-  // Function để load chi tiết thesis
-  const loadThesisById = useCallback(
-    async (id) => {
-      setLoading(true);
-      try {
-        const response = await authApis().get(`${endpoints["theses"]}/${id}`);
-        return response.data;
-      } catch (err) {
-        console.error("Error fetching thesis:", err);
-        alert("Không thể tải thông tin khóa luận!");
-        return null;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [setLoading]
-  );
-
   const handleEdit = useCallback(
     async (e, thesis) => {
       e.stopPropagation();
@@ -139,6 +122,8 @@ const ThesesList = () => {
   const confirmDelete = useCallback(async () => {
     if (!selectedThesis) return;
 
+    setLoading(true); // Thêm loading state
+
     try {
       await authApis().delete(`${endpoints["theses"]}/${selectedThesis.id}`);
 
@@ -150,8 +135,10 @@ const ThesesList = () => {
     } catch (err) {
       console.error("Error deleting thesis:", err);
       alert("Không thể xóa khóa luận này!");
+    } finally {
+      setLoading(false); // Đảm bảo loading được tắt
     }
-  }, [selectedThesis, setPagination, loadTheses, updateModal]);
+  }, [selectedThesis, setPagination, loadTheses, updateModal, setLoading]);
 
   // Helper function để tạo FormData
   const createFormData = useCallback(() => {
@@ -275,6 +262,7 @@ const ThesesList = () => {
           <Table striped bordered hover>
             <thead>
               <tr>
+                <th>#</th>
                 <th>Tiêu đề</th>
                 <th>Mô tả</th>
                 <th>Trạng thái</th>
@@ -285,6 +273,7 @@ const ThesesList = () => {
             <tbody>
               {data.theses.map((thesis) => (
                 <tr key={thesis.id}>
+                  <td>{thesis.id}</td>
                   <td>{thesis.title}</td>
                   <td>{thesis.description}</td>
                   <td>{thesis.status}</td>
@@ -325,6 +314,7 @@ const ThesesList = () => {
         onConfirm={confirmDelete}
         itemName={selectedThesis?.title}
         itemType="khóa luận"
+        disabled={loading} // Thêm prop này
       />
 
       {/* Modal chỉnh sửa */}
@@ -334,6 +324,7 @@ const ThesesList = () => {
         onSubmit={submitEdit}
         title="Chỉnh sửa thông tin khóa luận"
         size="lg"
+        disableSubmit={loading} // Thêm prop này
       >
         <ThesisFormFields
           formData={formData}
@@ -359,6 +350,7 @@ const ThesesList = () => {
         title="Thêm thông tin khóa luận"
         submitLabel="Thêm mới"
         size="lg"
+        disableSubmit={loading} // Thêm prop này
       >
         <ThesisFormFields
           formData={formData}

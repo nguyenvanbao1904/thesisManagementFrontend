@@ -62,6 +62,23 @@ export const useThesisData = () => {
   const loadEvaluationCriteriaCollections = useCallback((page) => 
     loadData("evaluation_criteria_collections", null, page, "evaluationCriteriaCollections", "evaluationCriteriaCollectionsPage"), [loadData]);
 
+  const loadThesisById = useCallback(
+    async (id) => {
+      setLoading(true);
+      try {
+        const response = await authApis().get(`${endpoints["theses"]}/${id}`);
+        return response.data;
+      } catch (err) {
+        console.error("Error fetching thesis:", err);
+        alert("Không thể tải thông tin khóa luận!");
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [setLoading]
+  );
+
   return {
     data,
     pagination,
@@ -72,6 +89,7 @@ export const useThesisData = () => {
     loadStudents,
     loadCommittees,
     loadEvaluationCriteriaCollections,
+    loadThesisById,
     setPagination,
     setLoading
   };

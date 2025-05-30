@@ -80,6 +80,8 @@ const EvaluationCriteriaList = () => {
   const confirmDelete = useCallback(async () => {
     if (!selectedCriteria) return;
 
+    setLoading(true); // Thêm loading state
+
     try {
       await authApis().delete(
         `${endpoints["evaluation_criterias"]}/${selectedCriteria.id}`
@@ -93,8 +95,10 @@ const EvaluationCriteriaList = () => {
     } catch (err) {
       console.error("Error deleting criteria:", err);
       alert("Không thể xóa tiêu chí này!");
+    } finally {
+      setLoading(false); // Đảm bảo loading được tắt
     }
-  }, [selectedCriteria, setPagination, loadEvaluationCriterias, updateModal]);
+  }, [selectedCriteria, setPagination, loadEvaluationCriterias, updateModal, setLoading]);
 
   const submitEdit = useCallback(
     async (e) => {
@@ -234,6 +238,7 @@ const EvaluationCriteriaList = () => {
         onConfirm={confirmDelete}
         itemName={selectedCriteria?.name}
         itemType="tiêu chí"
+        disabled={loading} // Thêm prop này
       />
 
       {/* Modal chỉnh sửa */}
@@ -242,6 +247,7 @@ const EvaluationCriteriaList = () => {
         onHide={() => updateModal("showEdit", false)}
         onSubmit={submitEdit}
         title="Chỉnh sửa tiêu chí"
+        disableSubmit={loading} // Thêm prop này
       >
         <CriteriaFormFields
           formData={formData}
@@ -256,6 +262,7 @@ const EvaluationCriteriaList = () => {
         onSubmit={submitAdd}
         title="Thêm tiêu chí"
         submitLabel="Thêm mới"
+        disableSubmit={loading} // Thêm prop này
       >
         <CriteriaFormFields
           formData={formData}

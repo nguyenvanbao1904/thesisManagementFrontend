@@ -139,6 +139,8 @@ const EvaluationCriteriaCollectionList = () => {
   const confirmDelete = useCallback(async () => {
     if (!selectedCollection) return;
 
+    setLoading(true); // Thêm loading state
+
     try {
       await authApis().delete(
         `${endpoints["evaluation_criteria_collections"]}/${selectedCollection.id}`
@@ -154,8 +156,10 @@ const EvaluationCriteriaCollectionList = () => {
     } catch (err) {
       console.error("Error deleting collection:", err);
       alert("Không thể xóa bộ tiêu chí này!");
+    } finally {
+      setLoading(false); // Đảm bảo loading được tắt
     }
-  }, [selectedCollection, setPagination, setData, setCollectionDetails, loadCollections, updateModal]);
+  }, [selectedCollection, setPagination, setData, setCollectionDetails, loadCollections, updateModal, setLoading]);
 
   const createSubmitData = useCallback(() => {
     return {
@@ -393,6 +397,7 @@ const EvaluationCriteriaCollectionList = () => {
         onConfirm={confirmDelete}
         itemName={selectedCollection?.name}
         itemType="bộ tiêu chí"
+        disabled={loading} // Thêm prop này
       />
 
       <FormModal
@@ -401,8 +406,7 @@ const EvaluationCriteriaCollectionList = () => {
         onSubmit={submitEdit}
         title="Chỉnh sửa bộ tiêu chí"
         size="lg"
-        staticBackdrop={true}
-        disableSubmit={!validateWeights() && formData.selectedCriteriaIds.length > 0}
+        disableSubmit={loading} // Thêm prop này
       >
         <EvaluationCriteriaCollectionFormFields
           formData={formData}
@@ -422,11 +426,10 @@ const EvaluationCriteriaCollectionList = () => {
         show={modals.showAdd}
         onHide={() => updateModal("showAdd", false)}
         onSubmit={submitAdd}
-        title="Thêm bộ tiêu chí"
+        title="Thêm bộ tiêu chí mới"
         submitLabel="Thêm mới"
         size="lg"
-        staticBackdrop={true}
-        disableSubmit={!validateWeights() && formData.selectedCriteriaIds.length > 0}
+        disableSubmit={loading} // Thêm prop này
       >
         <EvaluationCriteriaCollectionFormFields
           formData={formData}

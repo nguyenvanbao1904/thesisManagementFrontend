@@ -8,7 +8,8 @@ import { Modal, Button } from "react-bootstrap";
  * @param {Function} props.onConfirm - Hàm xử lý khi xác nhận xóa
  * @param {string} props.title - Tiêu đề modal
  * @param {string} props.itemName - Tên của item được xóa
- * @param {string} props.itemType - Loại của item được xóa (ví dụ: "tiêu chí", "bộ tiêu chí")
+ * @param {string} props.itemType - Loại của item được xóa
+ * @param {boolean} props.disabled - Vô hiệu hóa nút xác nhận
  */
 const ConfirmDeleteModal = ({
   show,
@@ -16,7 +17,8 @@ const ConfirmDeleteModal = ({
   onConfirm,
   title = "Xác nhận xóa",
   itemName,
-  itemType = "mục này"
+  itemType = "mục này",
+  disabled = false // Thêm prop disabled
 }) => {
   return (
     <Modal show={show} onHide={onHide}>
@@ -27,15 +29,23 @@ const ConfirmDeleteModal = ({
         Bạn có chắc chắn muốn xóa {itemType} "{itemName}" không?
       </Modal.Body>
       <Modal.Footer>
-        <Button variant="secondary" onClick={onHide}>
+        <Button 
+          variant="secondary" 
+          onClick={onHide}
+          disabled={disabled} // Disable cả nút Hủy
+        >
           Hủy
         </Button>
-        <Button variant="danger" onClick={onConfirm}>
-          Xóa
+        <Button 
+          variant="danger" 
+          onClick={onConfirm}
+          disabled={disabled} // Disable nút Xóa khi đang loading
+        >
+          {disabled ? "Đang xóa..." : "Xóa"}
         </Button>
       </Modal.Footer>
     </Modal>
   );
 };
 
-export default ConfirmDeleteModal; 
+export default ConfirmDeleteModal;
