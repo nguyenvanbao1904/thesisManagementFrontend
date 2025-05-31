@@ -36,9 +36,9 @@ const Login = () =>{
             
 
             const roleToPath = {
-                "ROLE_ACADEMICSTAFF": "/academicStaff/theses",
-                "ROLE_LECTURER": "/lecturer",
-                "ROLE_STUDENT": "/student",
+                "ROLE_ACADEMICSTAFF": "/academic-staff/theses",
+                "ROLE_LECTURER": "/lecturer/dashboard", 
+                "ROLE_STUDENT": "/student/dashboard",
             };
 
             nav(roleToPath[u.data.role] || "/");

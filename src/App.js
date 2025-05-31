@@ -10,10 +10,13 @@ import { useEffect, useReducer, useState } from "react";
 import MyUserReducer from "./reducers/MyUserReducer";
 import ProtectedRoute from "./components/routes/ProtectedRoute";
 import AcademicStaff from "./components/academicStaff/AcademicStaff";
+import Lecturer from "./components/lecturer/Lecturer";
+import Student from "./components/student/Student";
 import cookie from "react-cookies";
 import { authApis, endpoints } from "./configs/Apis";
 import MySpinner from "./components/layouts/MySpinner";
 import Unauthorized from "./components/routes/Unauthorized";
+import NotFound from "./components/routes/NotFound";
 
 const App = () => {
   const [user, dispatch] = useReducer(MyUserReducer, null);
@@ -22,16 +25,16 @@ const App = () => {
   useEffect(() => {
     const loadUser = async () => {
       const token = cookie.load("token");
-      if (token !== null) {
+      if (token) {
         try {
           const res = await authApis().get(endpoints["current_user"]);
           dispatch({
             type: "login",
             payload: res.data,
           });
-          
         } catch (err) {
           console.error("Lỗi lấy user ", err);
+          cookie.remove("token");
         }
       }
       setLoading(false);
@@ -48,17 +51,43 @@ const App = () => {
           <Header />
           <Container>
             <Routes>
+              {/* Public routes */}
               <Route path="/" element={<Home />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/unauthorized" element={<Unauthorized />} />
+
+              {/* Academic Staff routes */}
               <Route
-                path="/academicStaff/theses"
+                path="/academic-staff/*"
                 element={
                   <ProtectedRoute allowedRoles={["ROLE_ACADEMICSTAFF"]}>
                     <AcademicStaff />
                   </ProtectedRoute>
                 }
               />
-              <Route path="/unauthorized" element={<Unauthorized />} />
+
+              {/* Lecturer routes */}
+              <Route
+                path="/lecturer/*"
+                element={
+                  <ProtectedRoute allowedRoles={["ROLE_LECTURER"]}>
+                    <Lecturer />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Student routes */}
+              <Route
+                path="/student/*"
+                element={
+                  <ProtectedRoute allowedRoles={["ROLE_STUDENT"]}>
+                    <Student />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* 404 route */}
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </Container>
           <Footer />
