@@ -85,15 +85,24 @@ export const useCommitteeData = () => {
         setLoading(true);
         try {
             const res = await authApis().get(`${endpoints.committees}/${committeeId}`);
-            return res.data;
+            
+            // Đảm bảo các thuộc tính array luôn có giá trị
+            const committeeData = {
+                ...res.data,
+                members: res.data.members || [],
+                thesesIds: res.data.thesesIds || [],
+            };
+            
+            console.log('Committee data loaded:', committeeData); // Debug log
+            return committeeData;
         } catch (err) {
+            console.error('Error loading committee:', err);
             setError(`Error loading committee: ${err.message}`);
             return null;
         } finally {
             setLoading(false);
         }
-    }
-    , [setLoading]);
+    }, [setLoading]);
 
     return {
         data,

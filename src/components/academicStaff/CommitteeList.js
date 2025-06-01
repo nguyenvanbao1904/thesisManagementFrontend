@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useCommitteeData } from "../../hooks/useCommitteeData";
 import { authApis, endpoints } from "../../configs/Apis";
 import MySpinner from "../layouts/MySpinner";
-import { Alert, Button, Col, Row, Table } from "react-bootstrap";
+import { Alert, Badge, Button, Col, Row, Table } from "react-bootstrap";
 import ActionButtons from "../common/ActionButtons";
 import LoadMoreButton from "../common/LoadMoreButton";
 import formatDate from "../../utils/FormatDate";
@@ -10,6 +10,7 @@ import ConfirmDeleteModal from "../common/ConfirmDeleteModal";
 import { useCommitteeForm } from "../../hooks/useCommitteeForm";
 import CommitteeFormFields from "../committee/CommitteeFormFields";
 import FormModal from "../common/FormModal";
+import StatusUpdateModal from "../common/StatusUpdateModal";
 
 const CommitteeList = () => {
   const {
@@ -44,6 +45,8 @@ const CommitteeList = () => {
   });
 
   const [selectedCommittee, setSelectedCommittee] = useState(null);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [selectedCommitteeForStatus, setSelectedCommitteeForStatus] = useState(null);
 
   // load du lieu ban dau
 
@@ -327,6 +330,38 @@ const CommitteeList = () => {
     updateModal("showAdd", true);
   }, [resetForm, loadTheses, updateModal]);
 
+  const handleUpdateCommitteeStatus = useCallback(async (newStatus) => {
+    if (!selectedCommitteeForStatus) return;
+
+    setLoading(true);
+    try {
+      // Sử dụng query parameter thay vì body
+      await authApis().patch(
+        `${endpoints["committees"]}/${selectedCommitteeForStatus.id}/status?status=${newStatus}`
+      );
+
+      // Reload data
+      setPagination((prev) => ({ ...prev, committeesPage: 1 }));
+      await loadCommittees(1);
+      setShowStatusModal(false);
+      alert("Cập nhật trạng thái hội đồng thành công!");
+    } catch (err) {
+      console.error("Error updating committee status:", err);
+      alert("Không thể cập nhật trạng thái hội đồng!");
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedCommitteeForStatus, setPagination, loadCommittees, setLoading]);
+
+  const handleShowStatusModal = useCallback((committee) => {
+    setSelectedCommitteeForStatus({
+      id: committee.id,
+      currentStatus: committee.status,
+      name: `Hội đồng #${committee.id}`
+    });
+    setShowStatusModal(true);
+  }, []);
+
   if (loading && data.committees.length === 0) {
     return <MySpinner />;
   }
@@ -362,7 +397,23 @@ const CommitteeList = () => {
                 <tr key={committee.id}>
                   <td>{formatDate(committee.defenseDate)}</td>
                   <td>{committee.location}</td>
-                  <td>{committee.status}</td>
+                  <td>
+                    <div className="d-flex align-items-center">
+                      <Badge bg={committee.status === 'ACTIVE' ? 'success' : 'secondary'}>
+                        {committee.status}
+                      </Badge>
+                      <Button
+                        variant="outline-warning"
+                        size="sm"
+                        className="ms-2"
+                        onClick={() => handleShowStatusModal(committee)}
+                        disabled={loading}
+                      >
+                        <i className="fas fa-edit me-1"></i>
+                        Đổi trạng thái
+                      </Button>
+                    </div>
+                  </td>
                   <td>{committee.createdByName}</td>
                   <td>
                     <ActionButtons
@@ -436,6 +487,21 @@ const CommitteeList = () => {
           locations={data.locations}
         />
       </FormModal>
+
+      {/* Modal cập nhật trạng thái */}
+      {selectedCommitteeForStatus && (
+        <StatusUpdateModal
+          show={showStatusModal}
+          onHide={() => setShowStatusModal(false)}
+          title={selectedCommitteeForStatus.name}
+          currentStatus={selectedCommitteeForStatus.currentStatus}
+          statusOptions={[
+            { value: 'ACTIVE', label: 'Hoạt động' },
+            { value: 'LOCKED', label: 'Đã khóa' }
+          ]}
+          onSubmit={handleUpdateCommitteeStatus}
+        />
+      )}
     </>
   );
 };
